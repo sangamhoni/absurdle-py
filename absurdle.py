@@ -3,6 +3,7 @@ from random import choice
 import sys
 # For test purposes, do not change these imports.
 # You can add more below this line if needed.
+from collections import Counter
 
 COLOR_MAP = {'G': Back.GREEN, 'Y': Back.YELLOW, 'W': Back.WHITE}
 
@@ -22,14 +23,21 @@ def load_five_letter_words(filename):
 
 def get_result(secret_word, guess):
     # Initially, label every letter W by default
-    result = ['W' for _ in range(5)]
+    result = ['W'] * 5
+    remaining_letters = Counter(secret_word)  # occurrences left to assign to G or Y
+
     for i in range(len(guess)):
         # Right position
         if guess[i] == secret_word[i]:
             result[i] = 'G'
-        # Wrong position but in word somewhere
-        elif guess[i] in secret_word:
+            remaining_letters[guess[i]] -= 1
+
+    # Wrong position but in word somewhere (left to right, cap by remaining_letters)
+    for i in range(len(guess)):
+        if result[i] != 'G' and remaining_letters.get(guess[i], 0) > 0:
             result[i] = 'Y'
+            remaining_letters[guess[i]] -= 1
+
     return ''.join(result)
 
 
