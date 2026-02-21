@@ -37,14 +37,20 @@ def is_valid_guess(guess):
     # The guess must be a valid 5-letter word
     correct_length = len(guess) == 5
     only_letters = guess.isalpha()
+
     return correct_length and only_letters
 
+def is_in_wordlist(guess, five_letter_words):
+    return guess in set(five_letter_words)
 
-def get_guess():
+def get_guess(five_letter_words):
     guess = input('Enter a 5-letter guess: ').strip().upper()
     # Keep asking the user to try again until they enter a valid guess
     while not is_valid_guess(guess):
         guess = input('Guess must be a valid word consisting of 5 letters, try again: ').strip().upper()
+    
+    while not is_in_wordlist(guess, five_letter_words):
+        guess = input('Guess must be a valid meaningful word within our list of possible words: ').strip().upper()
     return guess
 
 
@@ -61,7 +67,7 @@ def main():
     # While the user hasn't won yet
     while result != 'GGGGG':
         # Ask the user to guess
-        guess = get_guess()
+        guess = get_guess(five_letter_words)
         # Determine what the result string should be, e.g. WYGGY
         result = get_result(secret_word, guess)
         # Display the guess using the colors from the result string
@@ -71,5 +77,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 
