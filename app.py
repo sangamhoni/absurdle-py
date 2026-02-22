@@ -3,12 +3,13 @@ Web Absurdle — FastAPI backend.
 Run from repo root: uvicorn app:app --reload
 """
 import os
+import random
 import uuid
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import FastAPI, Request
-from pydantic import BaseModel
+from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel, field_validator
 
 import absurdle
 
@@ -16,6 +17,24 @@ import absurdle
 class CreateGameResponse(BaseModel):
     game_id: str
     remaining_count: int
+
+
+class GuessRequest(BaseModel):
+    guess: str
+
+    @field_validator("guess")
+    @classmethod
+    def guess_uppercase(cls, v: str) -> str:
+        return v.strip().upper() if v else ""
+
+
+class GuessResponse(BaseModel):
+    result: str
+    won: bool
+
+
+class GiveUpResponse(BaseModel):
+    answer: str
 
 # In-memory game store: game_id -> {remaining_words: list[str], status: GameStatus}
 GameStatus = Literal["active", "won", "gave_up"]
@@ -92,3 +111,43 @@ def create_game_endpoint(request: Request):
         game_id=game_id,
         remaining_count=len(state["remaining_words"]),
     )
+
+
+@app.post("/games/{game_id}/guess", response_model=GuessResponse)
+def guess_endpoint(game_id: str, body: GuessRequest, request: Request):
+    """Submit a 5-letter guess. Returns result string (G/Y/W) and won flag."""
+    state = get_game(game_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if state["status"] != "active":
+        raise HTTPException(status_code=409, detail="Game already ended")
+
+    guess = body.guess
+    if not absurdle.is_valid_guess(guess):
+        raise HTTPException(status_code=422, detail="Guess must be exactly 5 letters")
+    answer_set_words = request.app.state.answer_set_words
+    if not absurdle.is_in_wordlist(guess, answer_set_words):
+        raise HTTPException(status_code=422, detail="Not in word list")
+
+    result_string, new_remaining = absurdle.get_adversarial_result(
+        guess, answer_set_words, state["remaining_words"]
+    )
+    state["remaining_words"] = new_remaining
+    if result_string == "GGGGG":
+        state["status"] = "won"
+    return GuessResponse(result=result_string, won=(result_string == "GGGGG"))
+
+
+@app.post("/games/{game_id}/giveup", response_model=GiveUpResponse)
+def giveup_endpoint(game_id: str):
+    """Give up and reveal one of the remaining words. Game is then ended."""
+    state = get_game(game_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if state["status"] != "active":
+        raise HTTPException(status_code=409, detail="Game already ended")
+
+    remaining = state["remaining_words"]
+    answer = random.choice(remaining) if remaining else ""
+    state["status"] = "gave_up"
+    return GiveUpResponse(answer=answer)
