@@ -9,6 +9,9 @@ from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, field_validator
 
 import absurdle
@@ -55,8 +58,9 @@ def get_game(game_id: str) -> dict | None:
     """Return game state or None if not found."""
     return GAME_STORE.get(game_id)
 
-# Resolve word list path from env (default: short_list.txt) relative to repo root.
+# Paths relative to repo root (where app.py lives).
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+_STATIC_DIR = os.path.join(_REPO_ROOT, "static")
 
 
 def _word_list_path() -> str:
@@ -82,16 +86,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Absurdle API", lifespan=lifespan)
 
+# CORS: allow frontend (same-origin when served from this app; configurable for other origins).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Accept"],
+)
 
+# Serve the SPA at root; assets under /static.
 @app.get("/")
-def root():
-    """Minimal sanity check."""
-    return {"service": "absurdle-api", "status": "ok"}
+def serve_app():
+    """Serve the frontend (index.html)."""
+    return FileResponse(os.path.join(_STATIC_DIR, "index.html"))
+
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 
 @app.get("/api")
 def api_info():
-    """API info (alias for root)."""
+    """API sanity check."""
     return {"service": "absurdle-api", "status": "ok"}
 
 
