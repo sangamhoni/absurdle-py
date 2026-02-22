@@ -7,7 +7,12 @@ An adversarial Wordle variant powered by a greedy algorithm that constantly chan
 
 **uses greedy algorithm for state space maximization**
 
+## Web app (development)
 
+- **Virtual environment:** `source .venv/bin/activate` (macOS/Linux).
+- **Backend entrypoint:** `app.py` (FastAPI app; created in later milestone).
+- **Install deps:** `pip install -r requirements.txt`
+- **Run server:** `uvicorn app:app --reload` (from repo root when app exists).
 
 ## CREDITS
 Word list source: https://github.com/dwyl/english-words/blob/master/words_alpha.txt

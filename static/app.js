@@ -1,0 +1,1 @@
+/* Web Absurdle — app (placeholder) */
