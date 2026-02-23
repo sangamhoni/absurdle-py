@@ -64,7 +64,7 @@ _STATIC_DIR = os.path.join(_REPO_ROOT, "static")
 
 
 def _word_list_path() -> str:
-    raw = os.environ.get("WORD_LIST", "short_list.txt")
+    raw = os.environ.get("WORD_LIST", "wordle-La.txt")
     if os.path.isabs(raw):
         return raw
     return os.path.join(_REPO_ROOT, raw)

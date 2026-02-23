@@ -1,0 +1,10 @@
+# Render Blueprint — deploy from repo root
+# https://docs.render.com/blueprint-spec
+services:
+  - type: web
+    name: absurdle
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health

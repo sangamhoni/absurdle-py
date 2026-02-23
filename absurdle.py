@@ -1,19 +1,8 @@
-from colorama import Back
-from random import choice
 import sys
 
 # For test purposes, do not change these imports.
 # You can add more below this line if needed.
 from collections import Counter
-
-COLOR_MAP = {"G": Back.GREEN, "Y": Back.YELLOW, "W": Back.WHITE}
-
-
-def show_result(result, guess):
-    # Display the result using the colorama library
-    for i in range(len(result)):
-        print(COLOR_MAP[result[i]] + guess[i], end="")
-    print(Back.RESET)
 
 
 def load_answer_set_words(filename):
@@ -126,9 +115,7 @@ def main():
         result, remaining_words = get_adversarial_result(
             guess, answer_set_words, remaining_words
         )
-        # Display the guess using the colors from the result string
-
-        show_result(result, guess)
+        print(guess, result)
 
     print("You win!")
 
