@@ -306,6 +306,16 @@ main {
   color: #c53030;
 }
 
+.game-message.fade-in,
+.game-status.fade-in {
+  animation: messageFadeIn 0.22s ease-out;
+}
+
+@keyframes messageFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Fixed strip above keyboard for win / give-up messages */
 .game-status {
   position: fixed;
@@ -331,7 +341,7 @@ main {
 
 /* Only this area scrolls; ends above status strip and gap; at most 6 rows visible */
 .game-grid-scroll {
-  --game-row-height: 4.9rem; /* tile 3.45rem + gap + row-message */
+  --game-row-height: 4.9rem; /* tile + gap + row-message; overridden in media queries */
   position: fixed;
   top: calc(var(--game-header-h) + var(--game-msg-h));
   left: 0;
@@ -344,10 +354,11 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem 0 2.25rem 0;
+  padding: 0.5rem 0.5rem 2.25rem;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
   z-index: 1;
+  box-sizing: border-box;
 }
 
 .game-grid-scroll::-webkit-scrollbar {
@@ -366,6 +377,10 @@ main {
   transform: translateX(-50%);
   z-index: 2;
   background: #fff;
+  max-width: calc(100vw - 1rem);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  box-sizing: border-box;
 }
 
 /* Give up confirmation dialog — matches app UI; above footer so overlay grays out entire page */
@@ -444,9 +459,12 @@ main {
 .game-grid {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: clamp(0.2rem, 1vw, 0.3rem);
   flex-shrink: 0;
-  padding: 0.5rem 0 0.25rem;
+  padding: 0.5rem 0.5rem 0.25rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .game-row {
@@ -458,8 +476,13 @@ main {
 
 .row-tiles {
   display: flex;
-  gap: 0.3rem;
+  gap: clamp(0.2rem, 1vw, 0.3rem);
   justify-content: center;
+  perspective: 1000px;
+  perspective-origin: center center;
+  transform-style: preserve-3d;
+  padding: 0 0.25rem;
+  max-width: 100%;
 }
 
 /* Below the tiles so it’s always visible and not clipped */
@@ -474,21 +497,53 @@ main {
   display: none;
 }
 
-/* Guess tiles: empty = light border; only typed (filled) = dark border; backspace clears → light again */
+/* Guess tiles: responsive size so row fits on narrow screens */
 .tile {
-  width: 3.45rem;
-  height: 3.45rem;
-  max-width: 22vw;
-  max-height: 22vw;
+  --tile-size: clamp(2.25rem, 14vw, 3.45rem);
+  width: var(--tile-size);
+  height: var(--tile-size);
+  min-width: 2.25rem;
+  min-height: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.85rem;
+  font-size: clamp(1.2rem, 4.5vw, 1.85rem);
   font-weight: bold;
   border: 2px solid #d3d6da;
   border-radius: 4px;
   background: #fff;
   box-sizing: border-box;
+  transform-origin: center center;
+}
+
+/* Letter pop-in when typing */
+.tile.tile-pop {
+  animation: tilePop 0.12s ease-out;
+}
+
+@keyframes tilePop {
+  0% { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+/* Flip on reveal: row gets .row-revealing, tiles animate then state switches at 50% (handled in JS) */
+.row-revealing .row-tiles .tile {
+  animation: tileFlip 0.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  backface-visibility: hidden;
+  will-change: transform;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.row-revealing .row-tiles .tile:nth-child(1) { animation-delay: 0ms; }
+.row-revealing .row-tiles .tile:nth-child(2) { animation-delay: 75ms; }
+.row-revealing .row-tiles .tile:nth-child(3) { animation-delay: 150ms; }
+.row-revealing .row-tiles .tile:nth-child(4) { animation-delay: 225ms; }
+.row-revealing .row-tiles .tile:nth-child(5) { animation-delay: 300ms; }
+
+@keyframes tileFlip {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg); }
 }
 
 .tile[data-state="empty"] {
@@ -539,10 +594,11 @@ main {
   pointer-events: none;
 }
 
-/* Keyboard container; fixed near bottom (position set above) */
+/* Keyboard container; fixed near bottom (position set above); --key-w/--key-h overridden in media queries */
 .game-keyboard {
   --key-w: 2.5rem;
   --key-gap: 0.3rem;
+  --key-h: 2.85rem;
   width: calc(10 * var(--key-w) + 9 * var(--key-gap));
   max-width: 100%;
   display: flex;
@@ -603,9 +659,9 @@ main {
   font-weight: 600;
 }
 
-/* Letter keys: thin light gray border, creamy white; match reference */
+/* Letter keys: height uses --key-h so it scales in media queries */
 .key {
-  height: 2.85rem;
+  height: var(--key-h, 2.85rem);
   padding: 0 0.4rem;
   font-size: 0.9rem;
   font-weight: 600;
@@ -618,6 +674,7 @@ main {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  transition: transform 0.08s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .key:hover {
@@ -626,6 +683,7 @@ main {
 
 .key:active {
   background: #e0dfda;
+  transform: scale(0.96);
 }
 
 /* Keyboard letter key colors from guess results (priority: green > yellow > gray) */
@@ -671,4 +729,112 @@ main {
   display: block;
   width: 1.25rem;
   height: 1.25rem;
+}
+
+/* Responsive: full-width keyboard on mobile, keys flex to fill; scroll area unchanged */
+@media (max-width: 480px) {
+  .game-keyboard {
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    --key-gap: 0.25rem;
+    --key-h: 2.4rem;
+    gap: 0.35rem;
+    padding: 0.4rem 0.25rem 0.35rem;
+    box-sizing: border-box;
+  }
+
+  .keyboard-row {
+    width: 100%;
+  }
+
+  .keyboard-row .key {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+
+  .keyboard-row-special .key-action#key-giveup {
+    flex: 0 0 20%;
+    min-width: 3.5rem;
+    width: auto;
+    font-size: 0.65rem;
+  }
+
+  .keyboard-row-special .key-icon {
+    flex: 0 0 20%;
+    min-width: 3.5rem;
+    width: auto;
+  }
+
+  .keyboard-row-special .key-wide {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.72rem;
+  }
+
+  .key {
+    font-size: 0.82rem;
+  }
+
+  .key-action {
+    font-size: 0.6rem;
+  }
+
+  .key-icon svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .game-grid-scroll {
+    --game-row-height: 4.2rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .game-keyboard {
+    --key-gap: 0.2rem;
+    --key-h: 2.05rem;
+    gap: 0.3rem;
+    padding: 0.35rem 0.2rem 0.3rem;
+  }
+
+  .keyboard-row-special .key-action#key-giveup {
+    flex: 0 0 20%;
+    min-width: 3.25rem;
+    font-size: 0.58rem;
+  }
+
+  .keyboard-row-special .key-icon {
+    flex: 0 0 20%;
+    min-width: 3.25rem;
+  }
+
+  .key {
+    font-size: 0.75rem;
+  }
+
+  .keyboard-row-special .key-wide {
+    font-size: 0.65rem;
+  }
+
+  .key-action {
+    font-size: 0.55rem;
+  }
+
+  .key-icon svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .game-grid-scroll {
+    --game-row-height: 3.8rem;
+  }
+
+  .tile {
+    --tile-size: clamp(2rem, 13vw, 2.5rem);
+    font-size: clamp(1.05rem, 4vw, 1.5rem);
+  }
 }

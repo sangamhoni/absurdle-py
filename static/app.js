@@ -25,12 +25,24 @@
 
   function showMessage(text, isError) {
     if (!gameMessage) return;
+    gameMessage.classList.remove("fade-in");
     gameMessage.textContent = text || "";
     gameMessage.classList.toggle("error", !!isError);
+    if (text) {
+      void gameMessage.offsetWidth;
+      gameMessage.classList.add("fade-in");
+    }
   }
 
   function showStatusMessage(text) {
-    if (gameStatus) gameStatus.textContent = text || "";
+    if (gameStatus) {
+      gameStatus.classList.remove("fade-in");
+      gameStatus.textContent = text || "";
+      if (text) {
+        void gameStatus.offsetWidth;
+        gameStatus.classList.add("fade-in");
+      }
+    }
     if (gameMessage) gameMessage.textContent = "";
   }
 
@@ -112,9 +124,19 @@
     return tiles.map((t) => (t.textContent || "").trim()).join("");
   }
 
+  var FLIP_DURATION_MS = 650;
+  var FLIP_STAGGER_MS = 75;
+  var FLIP_MID_MS = 325;
+
   function setTileLetter(tile, letter) {
     tile.textContent = letter || "";
     tile.setAttribute("data-state", letter ? "filled" : "empty");
+    if (letter) {
+      tile.classList.add("tile-pop");
+      setTimeout(function () {
+        tile.classList.remove("tile-pop");
+      }, 120);
+    }
   }
 
   function countSubmittedRows() {
@@ -163,24 +185,39 @@
     scrollCurrentRowIntoView();
   }
 
-  function setRowResult(row, word, resultString) {
-    const map = { G: "correct", Y: "present", W: "absent" };
-    const tiles = getCurrentTiles(row);
-    const upper = (word || "").toUpperCase();
-    const result = (resultString || "").toUpperCase();
-    for (let i = 0; i < 5; i++) {
+  function revealRowWithFlip(row, word, resultStates, onComplete) {
+    var tiles = getCurrentTiles(row);
+    var upper = (word || "").toUpperCase();
+    var i;
+    for (i = 0; i < 5; i++) {
       tiles[i].textContent = upper[i] || "";
-      tiles[i].setAttribute("data-state", map[result[i]] || "absent");
+      tiles[i].setAttribute("data-state", "filled");
     }
+    row.classList.add("row-revealing");
+    for (i = 0; i < 5; i++) {
+      (function (idx) {
+        setTimeout(function () {
+          tiles[idx].setAttribute("data-state", resultStates[idx] || "absent");
+        }, FLIP_MID_MS + idx * FLIP_STAGGER_MS);
+      })(i);
+    }
+    setTimeout(function () {
+      row.classList.remove("row-revealing");
+      if (typeof onComplete === "function") onComplete();
+    }, FLIP_DURATION_MS + 4 * FLIP_STAGGER_MS);
+  }
+
+  function setRowResult(row, word, resultString) {
+    var map = { G: "correct", Y: "present", W: "absent" };
+    var result = (resultString || "").toUpperCase();
+    var states = [];
+    for (var i = 0; i < 5; i++) states.push(map[result[i]] || "absent");
+    revealRowWithFlip(row, word, states);
   }
 
   function setRowAnswerCorrect(row, word) {
-    const tiles = getCurrentTiles(row);
-    const upper = (word || "").toUpperCase();
-    for (let i = 0; i < 5; i++) {
-      tiles[i].textContent = upper[i] || "";
-      tiles[i].setAttribute("data-state", "correct");
-    }
+    var states = ["correct", "correct", "correct", "correct", "correct"];
+    revealRowWithFlip(row, word, states);
   }
 
   function disableInput() {
@@ -234,15 +271,20 @@
         });
       })
       .then(function (data) {
-        setRowResult(row, word, data.result);
-        updateKeyboardFromGuess(word, data.result);
-        if (data.won) {
-          const x = countSubmittedRows();
-          showStatusMessage("You guessed successfully in " + x + " guesses!");
-          disableInput();
-        } else {
-          addNewRow();
-        }
+        var map = { G: "correct", Y: "present", W: "absent" };
+        var result = (data.result || "").toUpperCase();
+        var states = [];
+        for (var r = 0; r < 5; r++) states.push(map[result[r]] || "absent");
+        revealRowWithFlip(row, word, states, function () {
+          updateKeyboardFromGuess(word, data.result);
+          if (data.won) {
+            var x = countSubmittedRows();
+            showStatusMessage("You guessed successfully in " + x + " guesses!");
+            disableInput();
+          } else {
+            addNewRow();
+          }
+        });
       })
       .catch(function (err) {
         if (err && err.status === 422) {
@@ -294,12 +336,14 @@
         });
       })
       .then(function (data) {
-        const x = countSubmittedRows();
-        const answerRow = getCurrentRow();
-        if (answerRow) setRowAnswerCorrect(answerRow, data.answer);
+        var x = countSubmittedRows();
+        var answerRow = getCurrentRow();
+        if (answerRow) {
+          setRowAnswerCorrect(answerRow, data.answer);
+          scrollCurrentRowIntoView();
+        }
         showStatusMessage("You gave up after " + x + " guesses!");
         disableInput();
-        scrollCurrentRowIntoView();
       })
       .catch(function (err) {
         if (err && err.status === 404) showMessage("Game not found.", true);
