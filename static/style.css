@@ -9,14 +9,22 @@
   display: none !important;
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: system-ui, sans-serif;
   margin: 0;
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 1.5rem;
+  padding-bottom: 5rem;
   box-sizing: border-box;
   background: #fff;
 }
@@ -39,6 +47,7 @@ body::before {
 
 main {
   flex: 1;
+  min-height: 0;
   width: 100%;
   max-width: 480px;
   display: flex;
@@ -47,6 +56,7 @@ main {
   align-items: center;
   position: relative;
   z-index: 1;
+  overflow-y: auto;
 }
 
 /* Landing: no box, content on background */
@@ -162,11 +172,17 @@ main {
 }
 
 .site-footer {
-  margin-top: auto;
-  padding-top: 1.5rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
   text-align: center;
   font-size: 0.875rem;
   color: #666;
+  background: #fff;
+  z-index: 100;
 }
 
 .site-footer p {
@@ -210,23 +226,43 @@ main {
   display: block;
 }
 
-/* Game view: header + scrollable grid + keyboard */
+/* Game view: full-viewport overlay; header, keyboard, footer fixed; only guess area scrolls */
 #game {
-  flex: 1;
-  min-height: 0;
+  --game-header-h: 72px;
+  --game-msg-h: 40px;
+  --game-keyboard-h: 220px;
+  --footer-h: 72px;
+  --game-grid-gap-above-keyboard: 3.25rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-bottom: 1.5rem;
+  background: #fff;
 }
 
 .game-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--game-header-h);
   flex-shrink: 0;
   text-align: center;
-  margin-bottom: 0.35rem;
-  padding-top: 0.2rem;
-  position: relative;
+  padding-top: 0.35rem;
+  z-index: 2;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .game-header h1 {
@@ -238,7 +274,7 @@ main {
 .game-header .tagline {
   color: #6aaa64;
   font-size: 0.9rem;
-  margin: 0.2rem 0 0;
+  margin: 0.15rem 0 0;
   padding-bottom: 0;
   position: relative;
 }
@@ -247,16 +283,65 @@ main {
   display: none;
 }
 
+.game-message {
+  position: fixed;
+  top: var(--game-header-h);
+  left: 0;
+  right: 0;
+  height: var(--game-msg-h);
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  background: #fff;
+}
+
+.game-message.error {
+  color: #c53030;
+}
+
+/* Only this area scrolls; ends with gap above keyboard; at most 6 rows visible so scroll starts earlier */
 .game-grid-scroll {
-  flex: 1;
-  min-height: 0;
+  --game-row-height: 4.9rem; /* tile 3.45rem + gap + row-message */
+  position: fixed;
+  top: calc(var(--game-header-h) + var(--game-msg-h));
+  left: 0;
+  right: 0;
+  bottom: calc(var(--footer-h) + var(--game-keyboard-h) + var(--game-grid-gap-above-keyboard));
   width: 100%;
+  max-height: calc(6 * var(--game-row-height) + 5 * 0.3rem + 0.75rem);
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 5.5rem 0 0.5rem;
+  padding: 0.5rem 0 2.25rem 0;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  z-index: 1;
+}
+
+.game-grid-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.game-grid-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.game-keyboard {
+  position: fixed;
+  bottom: var(--footer-h);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: #fff;
 }
 
 .game-grid {
@@ -264,12 +349,32 @@ main {
   flex-direction: column;
   gap: 0.3rem;
   flex-shrink: 0;
+  padding: 0.5rem 0 0.25rem;
 }
 
 .game-row {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.row-tiles {
+  display: flex;
   gap: 0.3rem;
   justify-content: center;
+}
+
+/* Below the tiles so it’s always visible and not clipped */
+.row-message {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c53030;
+  text-align: center;
+}
+
+.row-message:empty {
+  display: none;
 }
 
 /* Guess tiles: empty = light border; only typed (filled) = dark border; backspace clears → light again */
@@ -319,7 +424,25 @@ main {
   color: #fff;
 }
 
-/* Keyboard container; fixed near bottom */
+.tile[data-state="revealed"] {
+  background: #787c7e;
+  border-color: #787c7e;
+  color: #fff;
+}
+
+/* Keyboard disabled when game ended */
+.game-keyboard.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Invalid word: gray out letter keys + Enter; keep Give up and Backspace usable */
+.game-keyboard.keyboard-invalid .key:not(#key-giveup):not(.key-icon) {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Keyboard container; fixed near bottom (position set above) */
 .game-keyboard {
   --key-w: 2.5rem;
   --key-gap: 0.3rem;
@@ -329,9 +452,7 @@ main {
   flex-direction: column;
   gap: 0.45rem;
   flex-shrink: 0;
-  margin-top: auto;
   padding: 0.5rem 0.45rem 0.45rem;
-  margin-bottom: 0.5rem;
   border-radius: 8px;
   box-sizing: border-box;
 }

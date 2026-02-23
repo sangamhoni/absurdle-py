@@ -37,16 +37,20 @@
         <h1>Absurdle</h1>
         <p class="tagline">Wordle's evil twin</p>
       </header>
+      <p class="game-message" id="game-message" aria-live="polite"></p>
       <div class="game-grid-scroll" aria-label="Guess grid scroll">
         <div class="game-grid" id="grid" aria-label="Guess grid">
-        <div class="game-row" data-row="0">
-          <div class="tile" data-state="empty" data-index="0"></div>
-          <div class="tile" data-state="empty" data-index="1"></div>
-          <div class="tile" data-state="empty" data-index="2"></div>
-          <div class="tile" data-state="empty" data-index="3"></div>
-          <div class="tile" data-state="empty" data-index="4"></div>
+          <div class="game-row" data-row="0">
+            <div class="row-tiles">
+              <div class="tile" data-state="empty" data-index="0"></div>
+              <div class="tile" data-state="empty" data-index="1"></div>
+              <div class="tile" data-state="empty" data-index="2"></div>
+              <div class="tile" data-state="empty" data-index="3"></div>
+              <div class="tile" data-state="empty" data-index="4"></div>
+            </div>
+            <span class="row-message" aria-live="polite"></span>
+          </div>
         </div>
-      </div>
       </div>
       <div class="game-keyboard" id="keyboard" aria-label="Keyboard">
         <div class="keyboard-row">

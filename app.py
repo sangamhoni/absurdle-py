@@ -116,6 +116,17 @@ def health():
     return {"status": "healthy"}
 
 
+@app.get("/check-word")
+def check_word(word: str, request: Request):
+    """Check if a 5-letter word is in the word list. For pre-Enter validation."""
+    w = (word or "").strip().upper()
+    if not absurdle.is_valid_guess(w):
+        return {"in_list": False}
+    if not absurdle.is_in_wordlist(w, request.app.state.answer_set_words):
+        return {"in_list": False}
+    return {"in_list": True}
+
+
 @app.post("/games", response_model=CreateGameResponse, status_code=201)
 def create_game_endpoint(request: Request):
     """Create a new game. No request body. Returns game_id and remaining_count."""

@@ -1,18 +1,57 @@
-/* Web Absurdle — app */
+/* Web Absurdle — app (Milestone 7: API integration + game flow) */
 
 (function () {
   const landing = document.getElementById("landing");
   const game = document.getElementById("game");
   const playBtn = document.getElementById("play-btn");
   const grid = document.getElementById("grid");
+  const gridScroll = document.querySelector(".game-grid-scroll");
   const keyboard = document.getElementById("keyboard");
+  const gameMessage = document.getElementById("game-message");
+
+  let gameId = null;
+  let gameEnded = false;
+  let submitting = false;
+  let invalidWord = false;
+  let checkWordAbort = null;
 
   // Best result per letter for keyboard colors. Priority: correct (3) > present (2) > absent (1)
   const letterStatePriority = { correct: 3, present: 2, absent: 1 };
   let letterStates = {};
 
-  function getLetterKeyEl(letter) {
-    return keyboard.querySelector('.key[data-key="' + letter + '"]');
+  function showMessage(text, isError) {
+    if (!gameMessage) return;
+    gameMessage.textContent = text || "";
+    gameMessage.classList.toggle("error", !!isError);
+  }
+
+  function setInvalidWord(flag) {
+    invalidWord = flag;
+    keyboard.classList.toggle("keyboard-invalid", flag);
+    const row = getCurrentRow();
+    const rowMsg = row ? row.querySelector(".row-message") : null;
+    if (rowMsg) rowMsg.textContent = flag ? "Not in word list" : "";
+    if (!flag) showMessage("");
+  }
+
+  function checkWordThen(word) {
+    if (checkWordAbort) checkWordAbort.abort();
+    if (!word || word.length !== 5) {
+      setInvalidWord(false);
+      return;
+    }
+    checkWordAbort = new AbortController();
+    fetch("/check-word?word=" + encodeURIComponent(word.toUpperCase()), { signal: checkWordAbort.signal })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        setInvalidWord(!data.in_list);
+      })
+      .catch(function () {
+        setInvalidWord(false);
+      })
+      .finally(function () {
+        checkWordAbort = null;
+      });
   }
 
   function clearKeyboardLetterStates() {
@@ -25,12 +64,6 @@
     });
   }
 
-  /**
-   * Update keyboard key colors from a guess result.
-   * guessWord: 5-letter string (e.g. "SPEED")
-   * resultString: 5 chars from API, G/Y/W (e.g. "WYGWG")
-   * Priority: Green > Yellow > Gray (e.g. if A is gray once and green later, show green).
-   */
   function updateKeyboardFromGuess(guessWord, resultString) {
     if (!guessWord || !resultString || guessWord.length !== 5 || resultString.length !== 5) return;
     const map = { G: "correct", Y: "present", W: "absent" };
@@ -71,31 +104,224 @@
     tile.setAttribute("data-state", letter ? "filled" : "empty");
   }
 
+  function countSubmittedRows() {
+    let count = 0;
+    grid.querySelectorAll(".game-row").forEach(function (row) {
+      const tiles = row.querySelectorAll(".tile");
+      const first = tiles[0];
+      if (first && ["correct", "present", "absent", "revealed"].indexOf(first.getAttribute("data-state")) !== -1) count++;
+    });
+    return count;
+  }
+
+  function scrollCurrentRowIntoView() {
+    const row = getCurrentRow();
+    if (!row || !gridScroll) return;
+    var grid = row.parentElement;
+    if (!grid) return;
+    var rowBottom = row.offsetTop + row.offsetHeight + (grid.offsetTop || 0);
+    var extraSpace = 2.75 * 16;
+    var targetTop = rowBottom + extraSpace - gridScroll.clientHeight;
+    var maxScroll = gridScroll.scrollHeight - gridScroll.clientHeight;
+    targetTop = Math.min(maxScroll, Math.max(0, targetTop));
+    gridScroll.scrollTo({ top: targetTop, behavior: "smooth" });
+  }
+
+  function addNewRow() {
+    const rowIndex = grid.querySelectorAll(".game-row").length;
+    const row = document.createElement("div");
+    row.className = "game-row";
+    row.setAttribute("data-row", String(rowIndex));
+    const rowTiles = document.createElement("div");
+    rowTiles.className = "row-tiles";
+    for (let i = 0; i < 5; i++) {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.setAttribute("data-state", "empty");
+      tile.setAttribute("data-index", String(i));
+      rowTiles.appendChild(tile);
+    }
+    row.appendChild(rowTiles);
+    const rowMsg = document.createElement("span");
+    rowMsg.className = "row-message";
+    rowMsg.setAttribute("aria-live", "polite");
+    row.appendChild(rowMsg);
+    grid.appendChild(row);
+    scrollCurrentRowIntoView();
+  }
+
+  function setRowResult(row, word, resultString) {
+    const map = { G: "correct", Y: "present", W: "absent" };
+    const tiles = getCurrentTiles(row);
+    const upper = (word || "").toUpperCase();
+    const result = (resultString || "").toUpperCase();
+    for (let i = 0; i < 5; i++) {
+      tiles[i].textContent = upper[i] || "";
+      tiles[i].setAttribute("data-state", map[result[i]] || "absent");
+    }
+  }
+
+  function setRowRevealed(row, word) {
+    const tiles = getCurrentTiles(row);
+    const upper = (word || "").toUpperCase();
+    for (let i = 0; i < 5; i++) {
+      tiles[i].textContent = upper[i] || "";
+      tiles[i].setAttribute("data-state", "revealed");
+    }
+  }
+
+  function disableInput() {
+    gameEnded = true;
+    keyboard.classList.add("disabled");
+  }
+
   function onLetterKey(letter) {
+    if (gameEnded || submitting) return;
     const row = getCurrentRow();
     if (!row) return;
     const letters = getCurrentLetters(row);
     if (letters.length >= 5) return;
     const tiles = getCurrentTiles(row);
     setTileLetter(tiles[letters.length], letter);
+    const nextWord = getCurrentLetters(row);
+    if (nextWord.length === 5) checkWordThen(nextWord);
+    else setInvalidWord(false);
   }
 
   function onBackspace() {
+    if (gameEnded || submitting) return;
     const row = getCurrentRow();
     if (!row) return;
     const tiles = getCurrentTiles(row);
     const letters = getCurrentLetters(row);
     if (letters.length === 0) return;
     setTileLetter(tiles[letters.length - 1], "");
+    setInvalidWord(false);
+  }
+
+  function submitGuess() {
+    if (gameEnded || submitting || !gameId || invalidWord) return;
+    const row = getCurrentRow();
+    if (!row) return;
+    const word = getCurrentLetters(row);
+    if (word.length !== 5) return;
+
+    submitting = true;
+    showMessage("");
+
+    fetch("/games/" + encodeURIComponent(gameId) + "/guess", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ guess: word }),
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw { status: res.status, data: data };
+          return data;
+        });
+      })
+      .then(function (data) {
+        setRowResult(row, word, data.result);
+        updateKeyboardFromGuess(word, data.result);
+        if (data.won) {
+          const x = countSubmittedRows();
+          showMessage("You guessed successfully in " + x + " guesses!");
+          disableInput();
+        } else {
+          addNewRow();
+        }
+      })
+      .catch(function (err) {
+        if (err && err.status === 422) {
+          const msg = (err.data && err.data.detail) || "Invalid guess.";
+          showMessage(typeof msg === "string" ? msg : "Not in word list.", true);
+        } else if (err && err.status === 404) {
+          showMessage("Game not found.", true);
+        } else {
+          showMessage("Something went wrong. Try again.", true);
+        }
+      })
+      .finally(function () {
+        submitting = false;
+      });
+  }
+
+  function giveUpFlow() {
+    if (gameEnded || submitting) return;
+    if (!window.confirm("Are you sure?")) return;
+
+    if (!gameId) {
+      showMessage("Game not found.", true);
+      return;
+    }
+
+    submitting = true;
+    showMessage("");
+
+    fetch("/games/" + encodeURIComponent(gameId) + "/giveup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw { status: res.status, data: data };
+          return data;
+        });
+      })
+      .then(function (data) {
+        const x = countSubmittedRows();
+        addNewRow();
+        const answerRow = getCurrentRow();
+        setRowRevealed(answerRow, data.answer);
+        showMessage("You gave up after " + x + " guesses!");
+        disableInput();
+      })
+      .catch(function (err) {
+        if (err && err.status === 404) showMessage("Game not found.", true);
+        else if (err && err.status === 409) showMessage("Game already ended.", true);
+        else showMessage("Something went wrong. Try again.", true);
+      })
+      .finally(function () {
+        submitting = false;
+      });
+  }
+
+  function resetGridToSingleRow() {
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+    addNewRow();
   }
 
   playBtn.addEventListener("click", function () {
+    showMessage("");
+    gameId = null;
+    gameEnded = false;
+    submitting = false;
+    invalidWord = false;
+    if (checkWordAbort) checkWordAbort.abort();
     clearKeyboardLetterStates();
-    landing.classList.add("hidden");
-    landing.setAttribute("aria-hidden", "true");
-    game.classList.remove("hidden");
-    game.setAttribute("aria-hidden", "false");
-    game.focus();
+    keyboard.classList.remove("disabled");
+    keyboard.classList.remove("keyboard-invalid");
+    resetGridToSingleRow();
+
+    fetch("/games", { method: "POST", headers: { "Content-Type": "application/json" } })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Create failed");
+        return res.json();
+      })
+      .then(function (data) {
+        gameId = data.game_id;
+        landing.classList.add("hidden");
+        landing.setAttribute("aria-hidden", "true");
+        game.classList.remove("hidden");
+        game.setAttribute("aria-hidden", "false");
+        game.focus();
+        requestAnimationFrame(function () {
+          scrollCurrentRowIntoView();
+        });
+      })
+      .catch(function () {
+        window.alert("Could not start game. Try again.");
+      });
   });
 
   keyboard.addEventListener("click", function (e) {
@@ -103,7 +329,12 @@
     if (!key) return;
     const dataKey = key.getAttribute("data-key");
     if (!dataKey) return;
-    if (dataKey === "enter" || dataKey === "giveup") {
+    if (dataKey === "enter") {
+      submitGuess();
+      return;
+    }
+    if (dataKey === "giveup") {
+      giveUpFlow();
       return;
     }
     if (dataKey === "backspace") {
@@ -112,6 +343,26 @@
     }
     if (dataKey.length === 1 && /[A-Z]/.test(dataKey)) {
       onLetterKey(dataKey);
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (game.classList.contains("hidden") || gameEnded) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      onBackspace();
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitGuess();
+      return;
+    }
+    if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
+      e.preventDefault();
+      onLetterKey(e.key.toUpperCase());
     }
   });
 })();
