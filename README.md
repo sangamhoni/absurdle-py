@@ -36,7 +36,20 @@ Optional: `WORD_LIST=path/to/words.txt` to use another list (default: `wordle-La
 
 The app serves the frontend from the same server; one URL is enough. Share that URL to play.
 
-**“Game not found” after submitting a guess?** Game state is in memory (or in Redis if configured). On Render’s free tier the app can spin down; when it wakes, memory is empty so old game IDs are gone. Fixes: (1) Use **one worker** (`--workers 1`) so one process handles all requests. (2) Optional: add a **Redis** (Key Value) instance on Render, link it to your web service so `REDIS_URL` is set—then game state is shared and survives restarts better.
+**“Game not found” after submitting a guess?** Hit `GET /health` — if you see `"redis": false`, the app is using in-memory store (lost on restart or if requests hit different workers). Use `--workers 1` and, on Render, add a Redis (Key Value) and set `REDIS_URL`. If it keeps happening, try **Railway** (below).
+
+### Deploy on Railway (alternative to Render)
+
+Railway runs one instance by default (no spin-down like Render free) and often avoids “game not found” with no Redis.
+
+1. Go to [railway.app](https://railway.app) → **Login** with GitHub.
+2. **New Project** → **Deploy from GitHub repo** → select **absurdle-py** (or your repo).
+3. Railway detects Python and uses your **Procfile**. If it doesn’t, set **Start Command** to:  
+   `uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1`
+4. In the service → **Settings** → **Networking** → **Generate Domain** to get a public URL.
+5. Deploy. Your app runs on that URL; no Redis needed for a single instance.
+
+(Optional: add **Redis** in Railway and set `REDIS_URL` for shared state across deploys.)
 
 ---
 

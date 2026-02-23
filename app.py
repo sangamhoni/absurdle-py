@@ -156,8 +156,8 @@ def api_info():
 
 @app.get("/health")
 def health():
-    """Health check for load balancers / hosting."""
-    return {"status": "healthy"}
+    """Health check for load balancers / hosting. Includes redis: true if game store is Redis."""
+    return {"status": "healthy", "redis": _redis is not None}
 
 
 @app.get("/check-word")
