@@ -2,6 +2,7 @@
 Web Absurdle — FastAPI backend.
 Run from repo root: uvicorn app:app --reload
 """
+import json
 import os
 import random
 import uuid
@@ -15,6 +16,11 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, field_validator
 
 import absurdle
+
+# Optional Redis for game store (shared across instances/workers). Set REDIS_URL to enable.
+_redis = None
+_REDIS_KEY_PREFIX = "absurdle:game:"
+_REDIS_TTL_SECONDS = 86400  # 24 hours
 
 
 class CreateGameResponse(BaseModel):
@@ -39,24 +45,48 @@ class GuessResponse(BaseModel):
 class GiveUpResponse(BaseModel):
     answer: str
 
-# In-memory game store: game_id -> {remaining_words: list[str], status: GameStatus}
+# Game state: {remaining_words: list[str], status: GameStatus}
 GameStatus = Literal["active", "won", "gave_up"]
-GAME_STORE: dict[str, dict] = {}
+_GAME_STORE: dict[str, dict] = {}  # used when REDIS_URL is not set
+
+
+def _game_store_set(game_id: str, state: dict) -> None:
+    if _redis:
+        key = _REDIS_KEY_PREFIX + game_id
+        _redis.setex(
+            key,
+            _REDIS_TTL_SECONDS,
+            json.dumps({"remaining_words": state["remaining_words"], "status": state["status"]}),
+        )
+    else:
+        _GAME_STORE[game_id] = state
+
+
+def _game_store_get(game_id: str) -> dict | None:
+    if _redis:
+        key = _REDIS_KEY_PREFIX + game_id
+        raw = _redis.get(key)
+        if raw is None:
+            return None
+        data = json.loads(raw)
+        return {"remaining_words": data["remaining_words"], "status": data["status"]}
+    return _GAME_STORE.get(game_id)
 
 
 def create_game(answer_set_words: set[str]) -> str:
     """Create a new game, store it, return game_id."""
     game_id = str(uuid.uuid4())
-    GAME_STORE[game_id] = {
+    state = {
         "remaining_words": list(answer_set_words),
         "status": "active",
     }
+    _game_store_set(game_id, state)
     return game_id
 
 
 def get_game(game_id: str) -> dict | None:
     """Return game state or None if not found."""
-    return GAME_STORE.get(game_id)
+    return _game_store_get(game_id)
 
 # Paths relative to repo root (where app.py lives).
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -72,7 +102,16 @@ def _word_list_path() -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load word list at startup; fail fast if missing or empty."""
+    """Load word list at startup; connect to Redis if REDIS_URL set."""
+    global _redis
+    redis_url = os.environ.get("REDIS_URL")
+    if redis_url:
+        try:
+            import redis as redis_lib
+            _redis = redis_lib.Redis.from_url(redis_url, decode_responses=True)
+            _redis.ping()
+        except Exception as e:
+            raise RuntimeError(f"Redis connection failed: {e}") from e
     path = _word_list_path()
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Word list not found: {path}")
@@ -81,7 +120,12 @@ async def lifespan(app: FastAPI):
         raise ValueError(f"Word list is empty or has no 5-letter words: {path}")
     app.state.answer_set_words = words
     yield
-    # shutdown: nothing to do
+    if _redis:
+        try:
+            _redis.close()
+        except Exception:
+            pass
+        _redis = None
 
 
 app = FastAPI(title="Absurdle API", lifespan=lifespan)
@@ -161,6 +205,7 @@ def guess_endpoint(game_id: str, body: GuessRequest, request: Request):
     state["remaining_words"] = new_remaining
     if result_string == "GGGGG":
         state["status"] = "won"
+    _game_store_set(game_id, state)
     return GuessResponse(result=result_string, won=(result_string == "GGGGG"))
 
 
@@ -176,4 +221,5 @@ def giveup_endpoint(game_id: str):
     remaining = state["remaining_words"]
     answer = random.choice(remaining) if remaining else ""
     state["status"] = "gave_up"
+    _game_store_set(game_id, state)
     return GiveUpResponse(answer=answer)

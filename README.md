@@ -31,10 +31,12 @@ Optional: `WORD_LIST=path/to/words.txt` to use another list (default: `wordle-La
 ## Hosting
 
 - **Build:** `pip install -r requirements.txt`
-- **Start:** `uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}`
+- **Start:** `uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1`
 - **Health:** `GET /health` → `{"status":"healthy"}`
 
 The app serves the frontend from the same server; one URL is enough. Share that URL to play.
+
+**“Game not found” after submitting a guess?** Game state is in memory (or in Redis if configured). On Render’s free tier the app can spin down; when it wakes, memory is empty so old game IDs are gone. Fixes: (1) Use **one worker** (`--workers 1`) so one process handles all requests. (2) Optional: add a **Redis** (Key Value) instance on Render, link it to your web service so `REDIS_URL` is set—then game state is shared and survives restarts better.
 
 ---
 

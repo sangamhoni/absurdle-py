@@ -291,7 +291,10 @@
           const msg = (err.data && err.data.detail) || "Invalid guess.";
           showMessage(typeof msg === "string" ? msg : "Not in word list.", true);
         } else if (err && err.status === 404) {
-          showMessage("Game not found.", true);
+          showMessage("Session expired (server restarted). Starting a new game.", true);
+          startNewGame().catch(function () {
+            showMessage("Could not start a new game. Refresh the page.", true);
+          });
         } else {
           showMessage("Something went wrong. Try again.", true);
         }
@@ -346,8 +349,12 @@
         disableInput();
       })
       .catch(function (err) {
-        if (err && err.status === 404) showMessage("Game not found.", true);
-        else if (err && err.status === 409) showMessage("Game already ended.", true);
+        if (err && err.status === 404) {
+          showMessage("Session expired (server restarted). Starting a new game.", true);
+          startNewGame().catch(function () {
+            showMessage("Could not start a new game. Refresh the page.", true);
+          });
+        } else if (err && err.status === 409) showMessage("Game already ended.", true);
         else showMessage("Something went wrong. Try again.", true);
       })
       .finally(function () {
@@ -373,7 +380,7 @@
     addNewRow();
   }
 
-  playBtn.addEventListener("click", function () {
+  function startNewGame() {
     showMessage("");
     clearStatusMessage();
     gameId = null;
@@ -386,7 +393,7 @@
     keyboard.classList.remove("keyboard-invalid");
     resetGridToSingleRow();
 
-    fetch("/games", { method: "POST", headers: { "Content-Type": "application/json" } })
+    return fetch("/games", { method: "POST", headers: { "Content-Type": "application/json" } })
       .then(function (res) {
         if (!res.ok) throw new Error("Create failed");
         return res.json();
@@ -401,10 +408,13 @@
         requestAnimationFrame(function () {
           scrollCurrentRowIntoView();
         });
-      })
-      .catch(function () {
-        window.alert("Could not start game. Try again.");
       });
+  }
+
+  playBtn.addEventListener("click", function () {
+    startNewGame().catch(function () {
+      window.alert("Could not start game. Try again.");
+    });
   });
 
   keyboard.addEventListener("click", function (e) {
