@@ -230,6 +230,7 @@ main {
 #game {
   --game-header-h: 72px;
   --game-msg-h: 40px;
+  --game-status-h: 2.5rem;
   --game-keyboard-h: 220px;
   --footer-h: 72px;
   --game-grid-gap-above-keyboard: 3.25rem;
@@ -305,14 +306,37 @@ main {
   color: #c53030;
 }
 
-/* Only this area scrolls; ends with gap above keyboard; at most 6 rows visible so scroll starts earlier */
+/* Fixed strip above keyboard for win / give-up messages */
+.game-status {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--footer-h) + var(--game-keyboard-h));
+  height: var(--game-status-h);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  background: #fff;
+  z-index: 2;
+}
+
+.game-status:empty {
+  visibility: hidden;
+}
+
+/* Only this area scrolls; ends above status strip and gap; at most 6 rows visible */
 .game-grid-scroll {
   --game-row-height: 4.9rem; /* tile 3.45rem + gap + row-message */
   position: fixed;
   top: calc(var(--game-header-h) + var(--game-msg-h));
   left: 0;
   right: 0;
-  bottom: calc(var(--footer-h) + var(--game-keyboard-h) + var(--game-grid-gap-above-keyboard));
+  bottom: calc(var(--footer-h) + var(--game-keyboard-h) + var(--game-status-h) + var(--game-grid-gap-above-keyboard));
   width: 100%;
   max-height: calc(6 * var(--game-row-height) + 5 * 0.3rem + 0.75rem);
   overflow-y: auto;
@@ -342,6 +366,79 @@ main {
   transform: translateX(-50%);
   z-index: 2;
   background: #fff;
+}
+
+/* Give up confirmation dialog — matches app UI; above footer so overlay grays out entire page */
+.giveup-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.giveup-dialog-overlay[hidden] {
+  display: none;
+}
+
+.giveup-dialog-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(106, 170, 100, 0.3);
+}
+
+.giveup-dialog-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.giveup-dialog-desc {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.giveup-dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.giveup-dialog-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.giveup-dialog-no {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.giveup-dialog-no:hover {
+  background: #e5e5e5;
+}
+
+.giveup-dialog-yes {
+  background: #6aaa64;
+  color: #fff;
+}
+
+.giveup-dialog-yes:hover {
+  background: #5d9a58;
 }
 
 .game-grid {

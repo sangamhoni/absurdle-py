@@ -8,6 +8,10 @@
   const gridScroll = document.querySelector(".game-grid-scroll");
   const keyboard = document.getElementById("keyboard");
   const gameMessage = document.getElementById("game-message");
+  const gameStatus = document.getElementById("game-status");
+  const giveupDialog = document.getElementById("giveup-dialog");
+  const giveupDialogNo = document.getElementById("giveup-dialog-no");
+  const giveupDialogYes = document.getElementById("giveup-dialog-yes");
 
   let gameId = null;
   let gameEnded = false;
@@ -23,6 +27,15 @@
     if (!gameMessage) return;
     gameMessage.textContent = text || "";
     gameMessage.classList.toggle("error", !!isError);
+  }
+
+  function showStatusMessage(text) {
+    if (gameStatus) gameStatus.textContent = text || "";
+    if (gameMessage) gameMessage.textContent = "";
+  }
+
+  function clearStatusMessage() {
+    if (gameStatus) gameStatus.textContent = "";
   }
 
   function setInvalidWord(flag) {
@@ -161,12 +174,12 @@
     }
   }
 
-  function setRowRevealed(row, word) {
+  function setRowAnswerCorrect(row, word) {
     const tiles = getCurrentTiles(row);
     const upper = (word || "").toUpperCase();
     for (let i = 0; i < 5; i++) {
       tiles[i].textContent = upper[i] || "";
-      tiles[i].setAttribute("data-state", "revealed");
+      tiles[i].setAttribute("data-state", "correct");
     }
   }
 
@@ -225,7 +238,7 @@
         updateKeyboardFromGuess(word, data.result);
         if (data.won) {
           const x = countSubmittedRows();
-          showMessage("You guessed successfully in " + x + " guesses!");
+          showStatusMessage("You guessed successfully in " + x + " guesses!");
           disableInput();
         } else {
           addNewRow();
@@ -246,17 +259,29 @@
       });
   }
 
+  function closeGiveupDialog() {
+    if (giveupDialog) giveupDialog.hidden = true;
+  }
+
+  function openGiveupDialog() {
+    if (giveupDialog) giveupDialog.hidden = false;
+  }
+
   function giveUpFlow() {
     if (gameEnded || submitting) return;
-    if (!window.confirm("Are you sure?")) return;
-
     if (!gameId) {
       showMessage("Game not found.", true);
       return;
     }
+    openGiveupDialog();
+  }
 
+  function confirmGiveUp() {
+    closeGiveupDialog();
+    if (!gameId) return;
     submitting = true;
     showMessage("");
+    clearStatusMessage();
 
     fetch("/games/" + encodeURIComponent(gameId) + "/giveup", {
       method: "POST",
@@ -270,11 +295,11 @@
       })
       .then(function (data) {
         const x = countSubmittedRows();
-        addNewRow();
         const answerRow = getCurrentRow();
-        setRowRevealed(answerRow, data.answer);
-        showMessage("You gave up after " + x + " guesses!");
+        if (answerRow) setRowAnswerCorrect(answerRow, data.answer);
+        showStatusMessage("You gave up after " + x + " guesses!");
         disableInput();
+        scrollCurrentRowIntoView();
       })
       .catch(function (err) {
         if (err && err.status === 404) showMessage("Game not found.", true);
@@ -286,6 +311,19 @@
       });
   }
 
+  if (giveupDialogNo) giveupDialogNo.addEventListener("click", closeGiveupDialog);
+  if (giveupDialogYes) giveupDialogYes.addEventListener("click", confirmGiveUp);
+  if (giveupDialog) {
+    giveupDialog.addEventListener("click", function (e) {
+      if (e.target === giveupDialog) closeGiveupDialog();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && giveupDialog && !giveupDialog.hidden) {
+        closeGiveupDialog();
+      }
+    });
+  }
+
   function resetGridToSingleRow() {
     while (grid.firstChild) grid.removeChild(grid.firstChild);
     addNewRow();
@@ -293,6 +331,7 @@
 
   playBtn.addEventListener("click", function () {
     showMessage("");
+    clearStatusMessage();
     gameId = null;
     gameEnded = false;
     submitting = false;
