@@ -1,1 +1,456 @@
-/* Web Absurdle — styles (placeholder) */
+/* Web Absurdle — styles */
+
+.hidden {
+  display: none !important;
+}
+
+#landing.hidden,
+#game.hidden {
+  display: none !important;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+/* Very subtle grid (optional); remove or keep minimal */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 2.5rem 2.5rem;
+  pointer-events: none;
+  z-index: 0;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Landing: no box, content on background */
+#landing {
+  padding: 2rem 0.5rem;
+}
+
+#landing header {
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+#landing h1 {
+  font-size: 2rem;
+  margin: 0;
+}
+
+#landing .tagline {
+  color: #666;
+  margin: 0.2rem;
+  padding: 0 0 0.75rem 0;
+  position: relative;
+}
+
+#landing .tagline::after {
+  content: "";
+  display: block;
+  width: 14rem;
+  height: 2px;
+  background: #6aaa64;
+  margin: 1.5rem auto 0.15rem;
+}
+
+#landing .explanation {
+  margin: 0 0 0;
+  padding-bottom: 1.2rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.how-to-play {
+  /* margin-top: 0.2rem; */
+  margin-bottom: 1.2rem;
+  text-align: center;
+}
+
+.how-to-play p {
+  margin: 0.0rem 0;
+}
+
+.how-to-play ul {
+  /* list-style: none; */
+  padding-left: 0;
+  display: inline-block;
+  text-align: left;
+}
+
+.how-to-play li {
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tile-example {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-weight: bold;
+  font-size: 0.875rem;
+  border-radius: 2px;
+}
+
+.tile-example.correct {
+  background: #6aaa64;
+  color: white;
+}
+
+.tile-example.present {
+  background: #c9b458;
+  color: white;
+}
+
+.tile-example.absent {
+  background: #787c7e;
+  color: white;
+}
+
+.cta-line {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0.25rem 0 0.4rem;
+}
+
+#play-btn {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.125rem;
+  font-weight: bold;
+  cursor: pointer;
+  background: #6aaa64;
+  color: white;
+  border: none;
+  border-radius: 4px; 
+}
+
+#play-btn:hover {
+  background: #5b9a55;
+}
+
+.site-footer {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.site-footer p {
+  margin: 0.25rem 0;
+}
+
+.site-footer a {
+  color: #6aaa64;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.site-footer a:hover {
+  text-decoration: none;
+  transform: translateY(-3px);
+}
+
+.site-footer a:active {
+  transform: translateY(-1px);
+}
+
+.footer-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.2rem;
+}
+
+.site-footer a.footer-icon {
+  color: #666;
+}
+
+.site-footer a.footer-icon:hover {
+  color: #6aaa64;
+  text-decoration: none;
+}
+
+.footer-icon svg {
+  width: 1em;
+  height: 1em;
+  display: block;
+}
+
+/* Game view: header + scrollable grid + keyboard */
+#game {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 1.5rem;
+}
+
+.game-header {
+  flex-shrink: 0;
+  text-align: center;
+  margin-bottom: 0.35rem;
+  padding-top: 0.2rem;
+  position: relative;
+}
+
+.game-header h1 {
+  font-size: 1.5rem;
+  margin: 0;
+  color: #6aaa64;
+}
+
+.game-header .tagline {
+  color: #6aaa64;
+  font-size: 0.9rem;
+  margin: 0.2rem 0 0;
+  padding-bottom: 0;
+  position: relative;
+}
+
+.game-header .tagline::after {
+  display: none;
+}
+
+.game-grid-scroll {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5.5rem 0 0.5rem;
+}
+
+.game-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.game-row {
+  display: flex;
+  gap: 0.3rem;
+  justify-content: center;
+}
+
+/* Guess tiles: empty = light border; only typed (filled) = dark border; backspace clears → light again */
+.tile {
+  width: 3.45rem;
+  height: 3.45rem;
+  max-width: 22vw;
+  max-height: 22vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.85rem;
+  font-weight: bold;
+  border: 2px solid #d3d6da;
+  border-radius: 4px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.tile[data-state="empty"] {
+  background: #fff;
+  color: #000;
+  border-color: #d3d6da;
+}
+
+.tile[data-state="filled"] {
+  background: #fff;
+  border-color: #565758;
+  color: #000;
+}
+
+.tile[data-state="correct"] {
+  background: #6aaa64;
+  border-color: #6aaa64;
+  color: #fff;
+}
+
+.tile[data-state="present"] {
+  background: #c9b458;
+  border-color: #c9b458;
+  color: #fff;
+}
+
+.tile[data-state="absent"] {
+  background: #787c7e;
+  border-color: #787c7e;
+  color: #fff;
+}
+
+/* Keyboard container; fixed near bottom */
+.game-keyboard {
+  --key-w: 2.5rem;
+  --key-gap: 0.3rem;
+  width: calc(10 * var(--key-w) + 9 * var(--key-gap));
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: 0.5rem 0.45rem 0.45rem;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.keyboard-row {
+  display: flex;
+  gap: var(--key-gap);
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+.keyboard-row .key {
+  width: var(--key-w);
+  min-width: var(--key-w);
+  flex-shrink: 0;
+}
+
+.keyboard-row-special {
+  gap: var(--key-gap);
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.keyboard-row-special .key-action {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0 0.35rem;
+}
+
+/* Give up & Backspace ≈ 2× letter key width; Enter fills the rest */
+.keyboard-row-special .key-action#key-giveup {
+  width: calc(2 * var(--key-w));
+  min-width: calc(2 * var(--key-w));
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0 0.5rem;
+  border-color: #c53030;
+  color: #c53030;
+}
+
+.keyboard-row-special .key-icon {
+  width: calc(2 * var(--key-w));
+  min-width: calc(2 * var(--key-w));
+  padding: 0;
+}
+
+.keyboard-row-special .key-wide {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Letter keys: thin light gray border, creamy white; match reference */
+.key {
+  height: 2.85rem;
+  padding: 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid #d3d6da;
+  border-radius: 4px;
+  background: #f5f5f2;
+  color: #1a1a1a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.key:hover {
+  background: #ebeae6;
+}
+
+.key:active {
+  background: #e0dfda;
+}
+
+/* Keyboard letter key colors from guess results (priority: green > yellow > gray) */
+.key[data-state="correct"] {
+  background: #6aaa64 !important;
+  border-color: #6aaa64 !important;
+  color: #fff !important;
+}
+
+.key[data-state="correct"]:hover {
+  background: #5b9a55 !important;
+  border-color: #5b9a55 !important;
+}
+
+.key[data-state="present"] {
+  background: #c9b458 !important;
+  border-color: #c9b458 !important;
+  color: #fff !important;
+}
+
+.key[data-state="present"]:hover {
+  background: #b8a34a !important;
+  border-color: #b8a34a !important;
+}
+
+.key[data-state="absent"] {
+  background: #787c7e !important;
+  border-color: #787c7e !important;
+  color: #fff !important;
+}
+
+.key[data-state="absent"]:hover {
+  background: #6a6d6f !important;
+  border-color: #6a6d6f !important;
+}
+
+.key-action {
+  font-size: 0.65rem;
+  padding: 0 0.4rem;
+}
+
+.key-icon svg {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+}
